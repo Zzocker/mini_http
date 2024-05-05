@@ -1,8 +1,8 @@
-use std::{collections::HashMap, str::{self, Utf8Error}};
+use std::{collections::HashMap, str::{self, FromStr, Utf8Error}};
 
 #[derive(Debug)]
 pub struct Request<'buf>{
-    method: &'buf str,
+    method: Method,
     path: &'buf str,
     query: HashMap<&'buf str, QueryValue<'buf>>,
     headers: HashMap<&'buf str, &'buf str>,
@@ -57,6 +57,7 @@ impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
         if protocol != "HTTP/1.1" {
             return Err(RequestParseError::InvalidProtocol);
         }
+        let method: Method = method.parse()?;
         let mut query = HashMap::new();
         if let Some(i) = path.find('?') {
             for qs in path[i+1..].split('&') {
@@ -104,7 +105,8 @@ impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
 pub enum RequestParseError{
     InvalidUTF8Encoding,
     InvalidRequest,
-    InvalidProtocol
+    InvalidProtocol,
+    InvalidMethod
 }
 
 impl From<Utf8Error> for RequestParseError {
@@ -113,8 +115,42 @@ impl From<Utf8Error> for RequestParseError {
     }
 }
 
+impl From<MethodParseError> for RequestParseError{
+    fn from(_: MethodParseError) -> Self {
+        RequestParseError::InvalidMethod
+    }
+}
+
 #[derive(Debug)]
 pub enum QueryValue<'buf>{
     Single(&'buf str),
     Multiple(Vec<&'buf str>)
 }
+
+#[derive(Debug)]
+pub enum Method {
+    GET,
+    PUT,
+    POST,
+    DELETE,
+    OPTIONS,
+    PATCH
+}
+
+impl FromStr for Method {
+    type Err = MethodParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "GET" => Ok(Method::GET),
+            "PUT" => Ok(Method::PUT),
+            "POST" => Ok(Method::POST),
+            "DELETE" => Ok(Method::DELETE),
+            "OPTIONS" => Ok(Method::OPTIONS),
+            "PATCH" => Ok(Method::PATCH),
+            _ => Err(MethodParseError)
+        }
+    }
+}
+
+pub struct MethodParseError;
