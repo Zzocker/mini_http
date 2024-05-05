@@ -1,12 +1,12 @@
 use std::{collections::HashMap, str::{self, Utf8Error}};
 
 #[derive(Debug)]
-pub struct Request{
-    method: String,
-    path: String,
-    query: HashMap<String, QueryValue>,
-    headers: HashMap<String, String>,
-    body: String,
+pub struct Request<'buf>{
+    method: &'buf str,
+    path: &'buf str,
+    query: HashMap<&'buf str, QueryValue<'buf>>,
+    headers: HashMap<&'buf str, &'buf str>,
+    body: &'buf [u8],
 }
 
 fn get_next_word(buf: &str) -> Option<(&str, &str)> {
@@ -45,10 +45,10 @@ fn get_next_header(buf: &str) -> Option<(&str, &str)> {
     }
 */
 
-impl TryFrom<&[u8]> for Request {
+impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
     type Error = RequestParseError;
 
-    fn try_from(buf: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(buf: &'buf [u8]) -> Result<Request<'buf>, Self::Error> {
         let buf = str::from_utf8(buf)?;
         let (method, buf) = get_next_word(buf).ok_or(RequestParseError::InvalidRequest)?;
         let (mut path, buf) = get_next_word(buf).ok_or(RequestParseError::InvalidRequest)?;
@@ -66,12 +66,12 @@ impl TryFrom<&[u8]> for Request {
                     key = &qs[..i];
                     value = &qs[i+1..];
                 }
-                query.entry(key.to_string())
+                query.entry(key)
                     .and_modify(|existing: &mut QueryValue| match existing {
-                        QueryValue::Single(v) => *existing = QueryValue::Multiple(vec![v.to_string(), value.to_string()]),
-                        QueryValue::Multiple(vec) => vec.push(value.to_string())
+                        QueryValue::Single(v) => *existing = QueryValue::Multiple(vec![v, value]),
+                        QueryValue::Multiple(vec) => vec.push(value)
                     })
-                    .or_insert(QueryValue::Single(value.to_string()));
+                    .or_insert(QueryValue::Single(value));
             }
             path = &path[..i];
         }
@@ -84,18 +84,18 @@ impl TryFrom<&[u8]> for Request {
             }
             match h.find(':'){
                 Some(i) => {
-                    headers.insert(h[..i].to_string(), h[i+2..].to_string());
+                    headers.insert(&h[..i], &h[i+2..]);
                 },
                 None => return Err(RequestParseError::InvalidRequest)
             };
         }
 
         Ok(Request {
-            method: method.to_string(),
-            path: path.to_string(),
+            method: method,
+            path: path,
             query: query,
             headers: headers,
-            body: buf.to_string()
+            body: buf.as_bytes()
         })
     }
 }
@@ -114,7 +114,7 @@ impl From<Utf8Error> for RequestParseError {
 }
 
 #[derive(Debug)]
-pub enum QueryValue{
-    Single(String),
-    Multiple(Vec<String>)
+pub enum QueryValue<'buf>{
+    Single(&'buf str),
+    Multiple(Vec<&'buf str>)
 }
