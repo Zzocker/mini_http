@@ -1,3 +1,5 @@
 mod request;
+mod response;
 
-pub use request::Request;
+pub use request::{Request, RequestParseError};
+pub use response::{Response, StatusCode};
