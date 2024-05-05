@@ -1,4 +1,6 @@
-use std::net::TcpListener;
+use std::{io::Read, net::TcpListener};
+
+use crate::http::Request;
 
 pub struct  Server{
     addr: String
@@ -15,10 +17,23 @@ impl Server {
         loop {
             // blocking
             match listener.accept() {
-                Ok((_, _)) => {
-                    println!("receive client connection")
+                Ok((mut stream, _)) => {
+                    println!("receive client connection");
+                    let mut buf = [0; 1024]; // 1 kb buffer to read request
+                    match stream.read(&mut buf){
+                        Ok(n) => {
+                            println!("read client request of size: {} bytes", n);
+                            match Request::try_from(&buf[..n]) {
+                                Ok(req) => {
+                                    dbg!(req);
+                                },
+                                Err(err) => eprintln!("failed to parse client request: {:?}", err)
+                            }
+                        },
+                        Err(err) => eprintln!("failed to read client request: {}", err)
+                    }
                 },
-                Err(err) => eprint!("failed to accept client connection: {}", err)
+                Err(err) => eprintln!("failed to accept client connection: {}", err)
             };
         }
     }
