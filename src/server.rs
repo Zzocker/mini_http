@@ -24,11 +24,9 @@ impl Server {
             // blocking
             match listener.accept() {
                 Ok((mut stream, _)) => {
-                    println!("receive client connection");
                     let mut buf = [0; 1024]; // 1 kb buffer to read request
                     match stream.read(&mut buf){
                         Ok(n) => {
-                            println!("read client request of size: {} bytes", n);
                             let resp = match Request::try_from(&buf[..n]) {
                                 Ok(req) => handler.handle(&req),
                                 Err(err) => handler.handle_parse_error(&err)

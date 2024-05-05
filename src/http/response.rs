@@ -6,6 +6,7 @@ use std::io::{Write, Result as IOResult};
 pub enum StatusCode {
     Ok = 200,
     BadRequest = 400,
+    NotFound = 404,
 }
 
 pub struct Response{
@@ -41,6 +42,7 @@ impl StatusCode {
         match self {
             StatusCode::Ok => "Ok",
             StatusCode::BadRequest =>"Bad Request",
+            StatusCode::NotFound => "Not Found"
         }
     }
 }

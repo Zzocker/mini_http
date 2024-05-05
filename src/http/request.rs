@@ -9,6 +9,20 @@ pub struct Request<'buf>{
     body: &'buf [u8],
 }
 
+impl<'buf> Request<'buf> {
+    pub fn method(&self) -> &Method {
+        &self.method
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn body(&self) -> &[u8] {
+        &self.body
+    }
+}
+
 fn get_next_word(buf: &str) -> Option<(&str, &str)> {
     for (i, c) in buf.chars().enumerate() {
         if c == ' ' {
